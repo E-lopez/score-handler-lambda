@@ -27,7 +27,7 @@ python3 -m pip install \
 --platform manylinux2014_aarch64 \
 --target=package \
 --implementation cp \
---python-version 3.11 \
+--python-version 3.13 \
 --only-binary=:all: --upgrade \
 numpy pandas numpy-financial psycopg2-binary sqlalchemy requests
 

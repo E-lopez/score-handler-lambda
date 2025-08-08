@@ -44,7 +44,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub score-handler-${Environment}
-      Runtime: python3.11
+      Runtime: python3.13
       Architectures:
         - arm64
       CodeUri: 
