@@ -12,6 +12,7 @@ def calc_score(section, values):
     scoring_res = scoring.use_scoring(values)
     weight = 1 if section == 'demographics' else values['weight']
     res[section] = scoring_res * weight
+    print(f"Section: {section}, Values: {values}, Scoring Result: {scoring_res}, Weight: {weight}, Final Score: {res[section]}")
     return res
 
 def register_survey_method(data):
@@ -25,13 +26,15 @@ def register_survey_method(data):
 
         # Check if user already exists
         existing_user = session.query(UserScore).filter_by(userId=id_number).first()
-        
+
+        print(f"Registering survey for existing user {existing_user} with scores: {scores.values()}. Result: {sum_scr}")
+
         if existing_user:
             # Update existing user
             existing_user.demographics = scores.get('demographics', 0)
             existing_user.financialResponsibility = scores.get('financialKnowledge', 0)
-            existing_user.riskAversion = scores.get('riskTolerance', 0)
-            existing_user.impulsivity = scores.get('trustLevel', 0)
+            existing_user.riskAversion = scores.get('riskAversion', 0)
+            existing_user.impulsivity = scores.get('impulsivity', 0)
             existing_user.futureOrientation = scores.get('futureOrientation', 0)
             existing_user.financialKnowledge = scores.get('financialKnowledge', 0)
             existing_user.locusOfControl = scores.get('locusOfControl', 0)
@@ -49,8 +52,8 @@ def register_survey_method(data):
                 userId=id_number,
                 demographics=scores.get('demographics', 0),
                 financialResponsibility=scores.get('financialKnowledge', 0),
-                riskAversion=scores.get('riskTolerance', 0),
-                impulsivity=scores.get('trustLevel', 0),
+                riskAversion=scores.get('riskAversion', 0),
+                impulsivity=scores.get('impulsivity', 0),
                 futureOrientation=scores.get('futureOrientation', 0),
                 financialKnowledge=scores.get('financialKnowledge', 0),
                 locusOfControl=scores.get('locusOfControl', 0),

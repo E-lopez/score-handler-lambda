@@ -35,7 +35,7 @@ class Strategy(ABC):
 class Default(Strategy):
   def __init__(self):
         self.count = 0
-        self.data = dict()
+        self.data = {}
 
   def score_question(self, *args, i = 0):
     if(len(self.data) == 0):
@@ -43,18 +43,22 @@ class Default(Strategy):
     if(i == len(self.data)):
       return self.count/len(self.data)
     key = list(self.data)[i]
-    partial = self.data[key] if type(self.data[key]) == 'int' else 3
+    print(f"Scoring field: {key} with value: {self.data[key]}")
+    value = int(self.data[key])
+    partial = value if isinstance(value, int) else 3
     self.count = self.count + partial
+    print(f"Current count: {self.count}, Partial score: {partial}. Len: {len(self.data)}, Value type: {isinstance(value, int)}")
     return self.score_question(self, args, i = i+1)
 
 
 class DemographicsScoring(Strategy):
   def __init__(self):
         self.count = 0
-        self.data = dict()
+        self.data = {}
 
   def field_score(self, key) -> float:
     data = self.data[key]
+    print(f"Scoring field: {key} with value: {data}. Data is F: {data == 'F'}, data is Desempleado: {data == 'Desempleado'}")
     if key == 'gender':
       return 5.0 if data == 'F' else 0
     elif key == 'occupation':
