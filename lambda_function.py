@@ -76,7 +76,7 @@ def create_response(status_code: int, body: Dict[str, Any], origin: str = None) 
     }
     
     # Set CORS origin based on request origin
-    if origin and origin in ['http://localhost:3000', 'http://localhost:5173']:
+    if origin and origin in ['http://localhost:3000', 'http://localhost:5173', 'https://loan-client.onrender.com']:
         headers['Access-Control-Allow-Origin'] = origin
         headers['Access-Control-Allow-Credentials'] = 'true'
     

@@ -33,7 +33,9 @@ def get_default(document, index, version):
     
 
 def map_risk_to_rate(value):
-  if value >= 10.0 and value <= 13.0:
+  if value >= 13.0 and value <= 15.0:
+    return 0.23
+  if value >= 10.0 and value < 13.0:
     return 0.24
   elif value >= 7.5 and value < 10.0:
     return 0.25
