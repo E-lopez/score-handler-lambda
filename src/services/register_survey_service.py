@@ -6,63 +6,103 @@ from database import get_db_session, close_db_session
 
 logger = logging.getLogger(__name__)
 
-def calc_score(section, values):
+def calc_score(section, values, gender=None):
     res = {}
+    
+    # Skip sections with zero weight or consent sections
+    if section == 'consent' or (isinstance(values, dict) and values.get('metadata', {}).get('weight') == 0):
+        return {}
+    
     scoring = QuestionScoring(section)
     scoring_res = scoring.use_scoring(values)
-    weight = 1 if section == 'demographics' else values['weight']
+    
+    # Handle weight - demographics uses 1, others use metadata weight
+    if section == 'demographics':
+        weight = 1
+    else:
+        weight = values.get('metadata', {}).get('weight', 1) or 1
+    
+    # Apply gender-based enhancement to all sections except demographics
+    if section != 'demographics' and gender == 'F':
+        gender_boost = 1.25  # 25% boost for females in all sections
+        scoring_res *= gender_boost
+        print(f"Applied female gender boost of {gender_boost} to section {section}")
+    
     res[section] = scoring_res * weight
-    print(f"Section: {section}, Values: {values}, Scoring Result: {scoring_res}, Weight: {weight}, Final Score: {res[section]}")
+    print(f"Section: {section}, Scoring Result: {scoring_res}, Weight: {weight}, Final Score: {res[section]}")
     return res
 
 def register_survey_method(data):
     session = get_db_session()
     try:
-        id_number = data['demographics']['idNumber']
-        parsed_data = {'demographics': {**data['demographics']}, **data['sections']}
-        t = list(map(lambda x: calc_score(x[0], x[1]), parsed_data.items()))
-        scores = {k: v for dict in t for k, v in dict.items()}
-        sum_scr = sum(scores.values())
+        # Extract demographics and gender from the nested structure
+        demographics_data = data.get('demographics', {})
+        id_number = demographics_data.get('idNumber')
+        gender = demographics_data.get('gender')
+        
+        # Prepare data for scoring - include demographics and all sections
+        all_sections = {'demographics': demographics_data}
+        all_sections.update(data.get('sections', {}))
+        
+        # Calculate scores with gender consideration, filtering out empty results
+        score_results = [calc_score(section, values, gender) for section, values in all_sections.items()]
+        scores = {k: v for result in score_results for k, v in result.items() if result}
+        
+        # Apply variance enhancement to prevent clustering
+        if scores:
+            score_values = list(scores.values())
+            mean_score = sum(score_values) / len(score_values)
+            enhanced_scores = {}
+            for section, score in scores.items():
+                # Amplify deviations from mean to increase differentiation
+                deviation = score - mean_score
+                enhanced_score = score + (deviation * 0.3)  # 30% amplification
+                enhanced_scores[section] = max(0.1, enhanced_score)  # Ensure positive scores
+            
+            sum_scr = sum(enhanced_scores.values())
+            scores = enhanced_scores  # Use enhanced scores
+        else:
+            sum_scr = 0
 
         # Check if user already exists
         existing_user = session.query(UserScore).filter_by(userId=id_number).first()
 
-        print(f"Registering survey for existing user {existing_user} with scores: {scores.values()}. Result: {sum_scr}")
+        print(f"Registering survey for user {id_number} (gender: {gender}) with enhanced scores: {list(scores.values())}. Total: {sum_scr}")
+
+        # Map dynamic section names to database fields
+        field_mapping = {
+            'demographics': 'demographics',
+            'financialResponsibility': 'financialResponsibility',
+            'riskAversion': 'riskAversion', 
+            'impulsivity': 'impulsivity',
+            'futureOrientation': 'futureOrientation',
+            'financialKnowledge': 'financialKnowledge',
+            'locusOfControl': 'locusOfControl',
+            'socialInfluence': 'socialInfluence',
+            'resilience': 'resilience',
+            'familismo': 'familismo',
+            'respect': 'respect'
+        }
 
         if existing_user:
-            # Update existing user
-            existing_user.demographics = scores.get('demographics', 0)
-            existing_user.financialResponsibility = scores.get('financialKnowledge', 0)
-            existing_user.riskAversion = scores.get('riskAversion', 0)
-            existing_user.impulsivity = scores.get('impulsivity', 0)
-            existing_user.futureOrientation = scores.get('futureOrientation', 0)
-            existing_user.financialKnowledge = scores.get('financialKnowledge', 0)
-            existing_user.locusOfControl = scores.get('locusOfControl', 0)
-            existing_user.socialInfluence = scores.get('socialInfluence', 0)
-            existing_user.resilience = scores.get('resilience', 0)
-            existing_user.familismo = scores.get('familismo', 0)
-            existing_user.respect = scores.get('respect', 0)
+            # Update existing user dynamically
+            for section, score in scores.items():
+                field_name = field_mapping.get(section)
+                if field_name and hasattr(existing_user, field_name):
+                    setattr(existing_user, field_name, score)
             existing_user.risk_level = sum_scr
             session.commit()
             session.refresh(existing_user)
             return existing_user.to_dict()
         else:
-            # Create new user
-            new_score = UserScore(
-                userId=id_number,
-                demographics=scores.get('demographics', 0),
-                financialResponsibility=scores.get('financialKnowledge', 0),
-                riskAversion=scores.get('riskAversion', 0),
-                impulsivity=scores.get('impulsivity', 0),
-                futureOrientation=scores.get('futureOrientation', 0),
-                financialKnowledge=scores.get('financialKnowledge', 0),
-                locusOfControl=scores.get('locusOfControl', 0),
-                socialInfluence=scores.get('socialInfluence', 0),
-                resilience=scores.get('resilience', 0),
-                familismo=scores.get('familismo', 0),
-                respect=scores.get('respect', 0),
-                risk_level=sum_scr
-            )
+            # Create new user dynamically
+            user_data = {'userId': id_number, 'risk_level': sum_scr}
+            for section, score in scores.items():
+                field_name = field_mapping.get(section)
+                if field_name:
+                    user_data[field_name] = score
+            
+            new_score = UserScore(**user_data)
             session.add(new_score)
             session.commit()
             session.refresh(new_score)
