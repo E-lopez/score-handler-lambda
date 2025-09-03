@@ -24,7 +24,7 @@ def calc_score(section, values, gender=None):
     
     # Apply gender-based enhancement to all sections except demographics
     if section != 'demographics' and gender == 'F':
-        gender_boost = 1.25  # 25% boost for females in all sections
+        gender_boost = 1.5  # 75% boost for females in all sections
         scoring_res *= gender_boost
         print(f"Applied female gender boost of {gender_boost} to section {section}")
     
@@ -35,14 +35,26 @@ def calc_score(section, values, gender=None):
 def register_survey_method(data):
     session = get_db_session()
     try:
-        # Extract demographics and gender from the nested structure
-        demographics_data = data.get('demographics', {})
+        print(f"Input data keys: {list(data.keys())}")
+        
+        # Handle different input structures
+        if 'demographics' in data:
+            demographics_data = data['demographics']
+        elif 'sections' in data and 'demographics' in data['sections']:
+            demographics_data = data['sections']['demographics']
+        else:
+            raise ValueError("No demographics section found in input data")
+        
         id_number = demographics_data.get('idNumber')
         gender = demographics_data.get('gender')
         
+        if not id_number:
+            raise ValueError("idNumber is required in demographics")
+        
         # Prepare data for scoring - include demographics and all sections
         all_sections = {'demographics': demographics_data}
-        all_sections.update(data.get('sections', {}))
+        if 'sections' in data:
+            all_sections.update(data['sections'])
         
         # Calculate scores with gender consideration, filtering out empty results
         score_results = [calc_score(section, values, gender) for section, values in all_sections.items()]
@@ -59,7 +71,16 @@ def register_survey_method(data):
                 enhanced_score = score + (deviation * 0.3)  # 30% amplification
                 enhanced_scores[section] = max(0.1, enhanced_score)  # Ensure positive scores
             
-            sum_scr = sum(enhanced_scores.values())
+            raw_sum = sum(enhanced_scores.values())
+            
+            # Normalize to 0-100 scale based on theoretical min/max
+            # Min: all 1s, male, unemployed ≈ 8.5
+            # Max: all 5s, female, employed ≈ 95 (with 1.5x boost)
+            min_possible = 8.5
+            max_possible = 95.0
+            
+            # Normalize to 0-100
+            sum_scr = max(0, min(100, ((raw_sum - min_possible) / (max_possible - min_possible)) * 100))
             scores = enhanced_scores  # Use enhanced scores
         else:
             sum_scr = 0
@@ -67,7 +88,7 @@ def register_survey_method(data):
         # Check if user already exists
         existing_user = session.query(UserScore).filter_by(userId=id_number).first()
 
-        print(f"Registering survey for user {id_number} (gender: {gender}) with enhanced scores: {list(scores.values())}. Total: {sum_scr}")
+        print(f"Registering survey for user {id_number} (gender: {gender}) with enhanced scores: {list(scores.values())}. Raw total: {raw_sum if scores else 0}, Normalized (0-100): {sum_scr}")
 
         # Map dynamic section names to database fields
         field_mapping = {

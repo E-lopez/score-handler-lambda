@@ -33,14 +33,20 @@ def get_default(document, index, version):
     
 
 def map_risk_to_rate(value):
-  if value >= 13.0 and value <= 15.0:
+  # Updated for 0-100 normalized risk scale
+  # Higher scores = lower risk = lower rates
+  if value >= 90.0:  # Excellent (was 13-15)
+    return 0.21
+  if value >= 80.0:  # Excellent (was 13-15)
+    return 0.22
+  elif value >= 70.0:  # Good (was 10-13)
     return 0.23
-  if value >= 10.0 and value < 13.0:
+  elif value >= 60.0:  # Average (was 7.5-10)
     return 0.24
-  elif value >= 7.5 and value < 10.0:
-    return 0.25
-  else:
-    return 0.0
+  elif value >= 20.0:  # Below Average
+    return 0.37
+  else:  # Poor (0-20)
+    return 0.40
     
 
 def cast_value(key, value):
