@@ -50,3 +50,6 @@ Thumbs.db
 
 # Temporary files
 bucket-policy.json
+
+# setp local files
+./start_local.sh

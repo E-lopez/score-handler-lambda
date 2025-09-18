@@ -47,7 +47,7 @@ def handle_amortization(user_id, user_risk, data):
     try:
         user_data = session.query(UserAmortizationData).filter_by(userId=user_id).first()
         period_value = 0 if data.get('period') == 'null' else data.get('period')
-        instalment_value = 0 if data.get('instalment') is None else data.get('instalment')
+        instalment_value = 0 if data.get('instalment') == 'null' else data.get('instalment')
         amount = data['amount']
         
         logger.info(f"Values: period={period_value}, instalment={instalment_value}, amount={amount}")
