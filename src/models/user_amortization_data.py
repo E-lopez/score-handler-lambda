@@ -4,12 +4,12 @@ from database import Base
 class UserAmortizationData(Base):
     __tablename__ = 'user_amortization_data'
     
-    nrow = Column(Integer, primary_key=True)
+    nrow = Column(Integer, primary_key=True, autoincrement=True)
     userId = Column(String(150), nullable=False, unique=True)
-    userRisk = Column(Numeric(10, 6))
-    instalment = Column(Numeric(10, 6))
-    period = Column(Numeric(10, 6))
-    amount = Column(Numeric(10, 6))
+    userRisk = Column(Numeric(12, 6))
+    instalment = Column(Numeric(15, 2))
+    period = Column(Numeric(12, 6))
+    amount = Column(Numeric(15, 2))
 
     def to_dict(self):
         return {

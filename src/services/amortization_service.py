@@ -45,30 +45,49 @@ def save_amortization(user_id, user_risk, period_value, instalment_value, amount
 def handle_amortization(user_id, user_risk, data):
     session = get_db_session()
     try:
+        logger.info(f"Starting amortization save for user: {user_id}")
         user_data = session.query(UserAmortizationData).filter_by(userId=user_id).first()
         period_value = 0 if data.get('period') is None else data.get('period')
         instalment_value = 0 if data.get('instalment') is None else data.get('instalment')
         amount = data['amount']
         
+        logger.info(f"Values: period={period_value}, instalment={instalment_value}, amount={amount}")
+        
         if user_data is None:
-            save_amortization(user_id, user_risk, period_value, instalment_value, amount)
+            logger.info("Creating new amortization record")
+            # Create new record using the same session
+            new_data = UserAmortizationData(
+                userId=user_id,
+                userRisk=user_risk,
+                instalment=instalment_value,
+                period=period_value,
+                amount=amount
+            )
+            session.add(new_data)
         else:
+            logger.info("Updating existing amortization record")
             user_data.userRisk = user_risk
             user_data.period = period_value
             user_data.instalment = instalment_value
             user_data.amount = amount
-            session.commit()
+        
+        session.commit()
+        logger.info("Amortization data saved successfully")
     except SQLAlchemyError as e:
         session.rollback()
-        logger.error(f"Error handling amortization: {str(e)}")
+        logger.error(f"SQLAlchemy error in handle_amortization: {str(e)}", exc_info=True)
+        raise e
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Unexpected error in handle_amortization: {str(e)}", exc_info=True)
         raise e
     finally:
         close_db_session(session)
 
 def repayment_plan(data):
     try:
-        payment_type = data.pop('payment_type')
-        user_id = data.pop('userId', None)  # Make userId optional
+        payment_type = data.get('payment_type')
+        user_id = data.get('userId')
         repayment_type = 'repayment_plan_period' if payment_type == 'period' else 'repayment_plan_instalment'
         
         # Use provided user_risk or get from database if userId provided
@@ -81,17 +100,26 @@ def repayment_plan(data):
         else:
             return {'error': 'Either userId or user_risk must be provided'}
         
-        data['user_risk'] = user_risk
-        
-        # Only save to database if userId is provided
-        if user_id:
-            handle_amortization(str(user_id), user_risk, data)
+        # Prepare data for table generation (remove non-calculation fields)
+        calc_data = data.copy()
+        calc_data.pop('payment_type', None)
+        calc_data.pop('userId', None)
+        calc_data['user_risk'] = user_risk
         
         generator = TableGenerator(repayment_type)
-        res = generator.use_method(**data)
+        res = generator.use_method(**calc_data)
+        
+        # Only save to database if userId is provided and calculation succeeded
+        if user_id and res and 'error' not in res:
+            try:
+                handle_amortization(str(user_id), user_risk, data)
+            except Exception as db_error:
+                logger.error(f"Database save failed: {str(db_error)}")
+                # Don't fail the request if DB save fails
+        
         return res
     except Exception as e:
-        logger.error(f"Error in repayment_plan: {str(e)}")
+        logger.error(f"Error in repayment_plan: {str(e)}", exc_info=True)
         return {'error': str(e)}
 
 def get_user_amortization(user_id):

@@ -7,6 +7,8 @@ from config import Config
 from database import init_db
 from services.amortization_service import repayment_plan, get_user_amortization
 from services.register_survey_service import register_survey_method
+from services.non_defaulter_service import create_non_defaulter, get_all_non_defaulters
+from services.clustered_survey_service import register_clustered_survey
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +50,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         elif path == '/survey' and http_method == 'POST':
             result = register_survey_method(request_data)
+            return create_response(200, result, origin)
+        
+        elif path == '/clustered-score' and http_method == 'POST':
+            result = register_clustered_survey(request_data)
+            return create_response(200, result, origin)
+        
+        elif path == '/non-defaulters' and http_method == 'POST':
+            result = create_non_defaulter(request_data)
+            return create_response(201, result, origin)
+        
+        elif path == '/non-defaulters' and http_method == 'GET':
+            result = get_all_non_defaulters()
             return create_response(200, result, origin)
         
         elif path == '/repayment-plan' and http_method == 'POST':

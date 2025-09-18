@@ -18,6 +18,18 @@ def init_db():
             **Config.SQLALCHEMY_ENGINE_OPTIONS
         )
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        
+        # Import models to register them with Base
+        from models.user_score import UserScore
+        from models.user_amortization_data import UserAmortizationData
+        from models.non_defaulter import NonDefaulter
+        
+        # Create tables if they don't exist
+        Base.metadata.create_all(bind=engine)
+        
+        # Ensure user_amortization_data table exists with correct schema
+        from models.user_amortization_data import UserAmortizationData
+        UserAmortizationData.__table__.create(bind=engine, checkfirst=True)
     
     return SessionLocal
 
