@@ -45,9 +45,8 @@ def save_amortization(user_id, user_risk, period_value, instalment_value, amount
 def handle_amortization(user_id, user_risk, data):
     session = get_db_session()
     try:
-        logger.info(f"Starting amortization save for user: {user_id}")
         user_data = session.query(UserAmortizationData).filter_by(userId=user_id).first()
-        period_value = 0 if data.get('period') is None else data.get('period')
+        period_value = 0 if data.get('period') == 'null' else data.get('period')
         instalment_value = 0 if data.get('instalment') is None else data.get('instalment')
         amount = data['amount']
         

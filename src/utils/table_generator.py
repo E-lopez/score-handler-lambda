@@ -60,12 +60,17 @@ class Strategy(ABC):
       balance = balance - principal
       
       payment_date = date.today() + relativedelta(months=i-1)
+      service_fee = amount * 0.015  # Assuming 1.5% service fee
+      insurance_fee = amount * (r/100) # Assuming insurance fee based on risk rate
       
       results.append({
+        'Period': i,
         'Payment_Date': payment_date.isoformat(),
-        'Payment': round(payment, 2),
+        'Payment': round(payment, 2) + service_fee + insurance_fee,
         'Principal': round(principal, 2),
         'Interest': round(interest, 2),
+        'Service_Fee': service_fee,
+        'Insurance_Fee': insurance_fee,
         'Balance': round(balance, 2)
       })
     
