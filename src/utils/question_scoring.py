@@ -96,8 +96,8 @@ class DemographicsScoring(Strategy):
     
     if key == 'gender':
       if data == 'F':
-        self.gender_multiplier = 1.4  # 40% advantage for females
-        return 8.0
+        self.gender_multiplier = 1.2  # 20% advantage for females
+        return 6.0
       else:
         self.gender_multiplier = 1.0
         return 3.0
