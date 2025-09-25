@@ -24,7 +24,7 @@ def calc_score(section, values, gender=None):
     
     # Apply gender-based enhancement to all sections except demographics
     if section != 'demographics' and gender == 'F':
-        gender_boost = 1.5  # 75% boost for females in all sections
+        gender_boost = 1.15  # 15% boost for females in all sections
         scoring_res *= gender_boost
         print(f"Applied female gender boost of {gender_boost} to section {section}")
     
@@ -68,7 +68,7 @@ def register_survey_method(data):
             for section, score in scores.items():
                 # Amplify deviations from mean to increase differentiation
                 deviation = score - mean_score
-                enhanced_score = score + (deviation * 0.3)  # 30% amplification
+                enhanced_score = score + (deviation * 0.15)  # 15% amplification
                 enhanced_scores[section] = max(0.1, enhanced_score)  # Ensure positive scores
             
             raw_sum = sum(enhanced_scores.values())
