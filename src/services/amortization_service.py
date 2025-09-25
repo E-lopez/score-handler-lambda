@@ -129,6 +129,7 @@ def get_user_amortization(user_id):
             return {'error': 'User not found'}, 404
         
         result = recalculate_plan(user_data)
+        result['user_data'] = user_data.to_dict()
         return result, 200
     except Exception as e:
         logger.error(f"Error getting user amortization: {str(e)}")
