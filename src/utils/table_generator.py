@@ -22,8 +22,8 @@ class TableGenerator():
   def select_method(self, strategy):
     if strategy == 'repayment_plan_period':
       return GenerateByPeriod()
-    elif strategy == 'repayment_plan_instalment':
-      return GenerateByInstalment()
+    elif strategy == 'repayment_plan_installment':
+      return GenerateByinstallment()
     else:
       return 'Not Implemented'
       
@@ -64,14 +64,14 @@ class Strategy(ABC):
       insurance_fee = amount * (r/100) # Assuming insurance fee based on risk rate
       
       results.append({
-        'Period': i,
-        'Payment_Date': payment_date.isoformat(),
-        'Payment': round(payment, 2) + service_fee + insurance_fee,
-        'Principal': round(principal, 2),
-        'Interest': round(interest, 2),
-        'Service_Fee': service_fee,
-        'Insurance_Fee': insurance_fee,
-        'Balance': round(balance, 2)
+        'period': i,
+        'due_date': payment_date.isoformat(),
+        'installment': round(payment, 2) + service_fee + insurance_fee,
+        'principal': round(principal, 2),
+        'interest': round(interest, 2),
+        'service_fee': service_fee,
+        'insurance_fee': insurance_fee,
+        'balance': round(balance, 2)
       })
     
     return results
@@ -86,13 +86,13 @@ class GenerateByPeriod(Strategy):
     return data
 
 
-class GenerateByInstalment(Strategy):
+class GenerateByinstallment(Strategy):
   def generate_table(self, **kwargs):
-    user_risk, instalment, amount = itemgetter('user_risk', 'instalment', 'amount')(self.parse_args(**kwargs))
+    user_risk, installment, amount = itemgetter('user_risk', 'installment', 'amount')(self.parse_args(**kwargs))
     r = map_risk_to_rate(user_risk)
     # Calculate number of periods using basic formula
     monthly_rate = float(r/12)
-    payment = float(instalment)
+    payment = float(installment)
     principal = float(amount)
     
     if monthly_rate == 0:
