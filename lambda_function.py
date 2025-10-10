@@ -22,64 +22,69 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     AWS Lambda handler for score-handler service
     """
     try:
-        # Parse the request (handle HTTP API v2 format)
-        http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method', 'GET')
-        path = event.get('path') or event.get('rawPath', '/')
-        body = event.get('body')
-        path_parameters = event.get('pathParameters') or {}
-        headers = event.get('headers') or {}
-        origin = headers.get('origin') or headers.get('Origin')
-        
+        http_method, path, body, path_parameters, headers, origin = parse_event(event)
         logger.info(f"Request: {http_method} {path}")
-        
-        # Parse JSON body if present
-        request_data = {}
-        if body:
-            try:
-                request_data = json.loads(body)
-            except json.JSONDecodeError:
-                return create_response(400, {'error': 'Invalid JSON in request body'}, origin)
 
-        # Handle OPTIONS preflight requests
+        request_data = parse_json_body(body, origin)
+        if isinstance(request_data, dict) and request_data.get('error'):
+            return create_response(400, request_data, origin)
+
         if http_method == 'OPTIONS':
             return create_response(200, {}, origin)
-        
-        # Route handling
-        if path == '/health' or path == '/':
-            return create_response(200, {'status': 'healthy', 'service': 'score-handler'}, origin)
-        
-        elif path == '/survey' and http_method == 'POST':
-            result = register_survey_method(request_data)
-            return create_response(200, result, origin)
-        
-        elif path == '/clustered-score' and http_method == 'POST':
-            result = register_clustered_survey(request_data)
-            return create_response(200, result, origin)
-        
-        elif path == '/non-defaulters' and http_method == 'POST':
-            result = create_non_defaulter(request_data)
-            return create_response(201, result, origin)
-        
-        elif path == '/non-defaulters' and http_method == 'GET':
-            result = get_all_non_defaulters()
-            return create_response(200, result, origin)
-        
-        elif path == '/repayment-plan' and http_method == 'POST':
-            result = repayment_plan(request_data)
-            return create_response(200, result, origin)
-        
-        elif path.startswith('/repayment-plan/') and http_method == 'GET':
-            user_id = path_parameters.get('user_id') or path.split('/')[-1]
-            result, status_code = get_user_amortization(user_id)
-            return create_response(status_code, result, origin)
-        
-        else:
-            logger.warning(f"No route found for {http_method} {path}")
-            return create_response(404, {'error': f'Endpoint not found: {http_method} {path}'}, origin)
-            
+
+        return handle_route(http_method, path, request_data, path_parameters, origin)
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}", exc_info=True)
         return create_response(500, {'error': 'Internal server error'}, None)
+
+def parse_event(event: Dict[str, Any]):
+    http_method = event.get('httpMethod') or event.get('requestContext', {}).get('http', {}).get('method', 'GET')
+    path = event.get('path') or event.get('rawPath', '/')
+    body = event.get('body')
+    path_parameters = event.get('pathParameters') or {}
+    headers = event.get('headers') or {}
+    origin = headers.get('origin') or headers.get('Origin')
+    return http_method, path, body, path_parameters, headers, origin
+
+def parse_json_body(body, origin):
+    if not body:
+        return {}
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError:
+        return {'error': 'Invalid JSON in request body'}
+
+def handle_route(http_method, path, request_data, path_parameters, origin):
+    if path in ['/health', '/']:
+        return create_response(200, {'status': 'healthy', 'service': 'score-handler'}, origin)
+
+    if path == '/survey' and http_method == 'POST':
+        result = register_survey_method(request_data)
+        return create_response(200, result, origin)
+
+    if path == '/clustered-score' and http_method == 'POST':
+        result = register_clustered_survey(request_data)
+        return create_response(200, result, origin)
+
+    if path == '/non-defaulters':
+        if http_method == 'POST':
+            result = create_non_defaulter(request_data)
+            return create_response(201, result, origin)
+        if http_method == 'GET':
+            result = get_all_non_defaulters()
+            return create_response(200, result, origin)
+
+    if path == '/repayment-plan' and http_method == 'POST':
+        result = repayment_plan(request_data)
+        return create_response(200, result, origin)
+
+    if path.startswith('/repayment-plan/') and http_method == 'GET':
+        user_id = path_parameters.get('user_id') or path.split('/')[-1]
+        result, status_code = get_user_amortization(user_id)
+        return create_response(status_code, result, origin)
+
+    logger.warning(f"No route found for {http_method} {path}")
+    return create_response(404, {'error': f'Endpoint not found: {http_method} {path}'}, origin)
 
 def create_response(status_code: int, body: Dict[str, Any], origin: str = None) -> Dict[str, Any]:
     """Create a properly formatted API Gateway response"""
